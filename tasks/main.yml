@@ -1,0 +1,69 @@
+# tasks file for ansible-role_vagrant_user
+---
+- name: Register vagrant user existence
+  ansible.builtin.command: id -u {{ vagrant_user }}
+  register: result
+  changed_when: false
+
+- name: Show vagrant user existence when it does exist
+  ansible.builtin.debug:
+    msg: User {{ vagrant_user }} exists
+  when: result.rc == 0
+
+- name: Show vagrant user existence when it does not exists
+  ansible.builtin.debug:
+    msg: User {{ vagrant_user }} does not exist
+  when: result.rc != 0
+
+- name: Set password of {{ vagrant_user }}
+  when: result.rc == 0
+  block:
+
+    - name: Show credentials
+      ansible.builtin.debug:
+        msg: "Setting user/pass: {{ vagrant_user }}/{{ vagrant_pass }}"
+
+    # skip this, use the beforehand encrypted hash in/as groups_var
+    - name: Generate hashed password
+      ansible.builtin.set_fact:
+        vagrant_pass_hash: "{{ vagrant_pass | string | password_hash('sha512') }}"
+      when: false
+
+    - name: Set new predefined password for vagrant user
+      ansible.builtin.user:
+        name: "{{ vagrant_user }}"
+        password: "{{ vagrant_pass_hash }}"
+
+- name: Set ssh key of {{ vagrant_user }}
+  when: result.rc == 0
+  block:
+
+    - name: Register authorized keys exists
+      ansible.builtin.stat:
+        path: ~{{ vagrant_user }}/.ssh/authorized_keys
+      register: result2
+
+    - name: Show existence authorized keys
+      ansible.builtin.debug:
+        msg: "No ~{{ vagrant_user }}/.ssh/authorized_keys file found so not replacing it"
+      when: not result2.stat.exists
+
+    - name: Replace authorized keys file for {{ vagrant_user }}
+      when: result2.stat.exists
+      block:
+
+        - name: Show existence authorized keys
+          ansible.builtin.debug:
+            msg: "Found and replacing ~{{ vagrant_user }}/.ssh/authorized_keys file"
+
+        - name: Show keys bla
+          ansible.builtin.debug:
+            msg:
+              - vagrant_public_key: "{{ vagrant_public_key }}"
+              - vagrant_private_key: "{{ vagrant_private_key }}"
+
+        - name: Replace authorized_keys
+          ansible.posix.authorized_key:
+            user: "{{ vagrant_user }}"
+            key: "{{ vagrant_public_key }}"
+            exclusive: true
