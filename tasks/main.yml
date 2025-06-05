@@ -56,11 +56,11 @@
           ansible.builtin.debug:
             msg: "Found and replacing ~{{ vagrant_user }}/.ssh/authorized_keys file"
 
-        - name: Show keys bla
+        - name: Show keys
           ansible.builtin.debug:
             msg:
               - vagrant_public_key: "{{ vagrant_public_key }}"
-              - vagrant_private_key: "{{ vagrant_private_key }}"
+              # - vagrant_private_key: "{{ vagrant_private_key }}"
 
         - name: Replace authorized_keys
           ansible.posix.authorized_key:
